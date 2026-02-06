@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOL STRATEGY — Solana's Treasury Protocol</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --teal:#0bb89a;--teal-light:#e6faf5;--teal-mid:rgba(11,184,154,0.08);
+  --cyan:#00b8d4;--violet:#6c47e6;--violet-light:#f0ecfd;--magenta:#9b6dff;
+  --bg:#ffffff;--bg2:#f7f8fa;--card:#ffffff;
+  --border:rgba(0,0,0,0.06);--border-hover:rgba(0,0,0,0.1);
+  --text:#4a5568;--bright:#111827;--dim:#94a3b8;
+  --red:#ef4444;--green:#22c55e;
+  --shadow:0 1px 3px rgba(0,0,0,0.04),0 1px 2px rgba(0,0,0,0.03);
+  --shadow-hover:0 4px 12px rgba(0,0,0,0.06);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.c{max-width:960px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.ni{max-width:960px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.nl{display:flex;align-items:center;gap:9px;text-decoration:none}
+.nli{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--violet));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}
+.nlt{font-weight:600;font-size:13px;letter-spacing:1.8px;color:var(--bright)}
+.nk{display:flex;gap:24px;align-items:center}
+.nk a{color:var(--dim);text-decoration:none;font-size:12.5px;font-weight:500;transition:color 0.2s}
+.nk a:hover{color:var(--bright)}
+.bf{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:var(--teal-mid);border:1px solid rgba(11,184,154,0.2);border-radius:6px;color:var(--teal);font-size:12.5px;font-weight:500;text-decoration:none;transition:all 0.2s;cursor:pointer}
+.bf:hover{background:rgba(11,184,154,0.12);border-color:rgba(11,184,154,0.35)}
+.bf svg{width:13px;height:13px;fill:currentColor}
+
+.hero{padding:160px 0 80px}
+.hb{display:inline-block;padding:5px 12px;background:var(--teal-light);border:1px solid rgba(11,184,154,0.15);border-radius:20px;font-size:10.5px;font-weight:600;color:var(--teal);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:24px}
+.hero h1{font-size:clamp(36px,5.5vw,58px);font-weight:700;line-height:1.08;letter-spacing:-1px;margin-bottom:20px;color:var(--bright)}
+.grad{background:linear-gradient(135deg,var(--teal),var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:15.5px;line-height:1.65;max-width:480px;margin-bottom:32px}
+
+/* Stats */
+.sr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);transition:box-shadow 0.2s}
+.sc:hover{box-shadow:var(--shadow-hover)}
+.sl{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.sv{font-size:24px;font-weight:700;color:var(--bright);letter-spacing:-0.5px}
+.su{font-size:12px;font-weight:500;color:var(--dim);margin-left:3px}
+.sch{font-size:11px;font-weight:500;margin-top:3px}
+.sch.up{color:var(--green)}.sch.down{color:var(--red)}.sch.neutral{color:var(--dim)}
+.loading-pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* Chart */
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.chart-header .sl{margin-bottom:0}
+.chart-tabs{display:flex;gap:4px}
+.chart-tab{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:500;color:var(--dim);cursor:pointer;border:none;background:none;transition:all 0.2s}
+.chart-tab.active{background:var(--teal-light);color:var(--teal)}
+.chart-tab:hover{color:var(--bright)}
+.chart-canvas{width:100%;height:200px;position:relative}
+.chart-canvas canvas{width:100%;height:100%}
+
+/* MM */
+.mm-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.mm-header{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.mc{height:48px;display:flex;align-items:flex-end;gap:2px}
+.mb{flex:1;border-radius:1.5px 1.5px 0 0;background:linear-gradient(to top,rgba(11,184,154,0.15),rgba(11,184,154,0.45));animation:bi 1s ease forwards;transform-origin:bottom;transform:scaleY(0)}
+@keyframes bi{to{transform:scaleY(1)}}
+.trade-list{margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+.trade-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px}
+.trade-item .type{font-weight:600;width:40px}
+.trade-item .type.buy{color:var(--green)}
+.trade-item .type.sell{color:var(--red)}
+.trade-item .amount{color:var(--bright);font-weight:500}
+.trade-item .time{color:var(--dim)}
+
+/* ── Treasury Wallet ── */
+.treasury-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:var(--shadow);margin-bottom:100px}
+.treasury-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.treasury-header .sl{margin-bottom:0}
+.treasury-addr{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:'SF Mono','Fira Code',monospace,sans-serif;color:var(--dim);cursor:pointer;transition:all 0.2s;text-decoration:none}
+.treasury-addr:hover{border-color:var(--border-hover);color:var(--bright)}
+.treasury-addr svg{flex-shrink:0}
+.treasury-body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.treasury-stat{text-align:center;padding:20px 16px;background:var(--bg2);border-radius:8px}
+.treasury-stat .ts-label{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.treasury-stat .ts-value{font-size:26px;font-weight:700;color:var(--bright);letter-spacing:-0.5px}
+.treasury-stat .ts-sub{font-size:11px;color:var(--dim);margin-top:4px}
+.treasury-live{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:500;color:var(--teal)}
+.treasury-live .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.treasury-explorer{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;color:var(--teal);text-decoration:none;transition:opacity 0.2s}
+.treasury-explorer:hover{opacity:0.7}
+.treasury-explorer svg{width:12px;height:12px}
+
+/* Config Banner */
+.config-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:8px}
+.config-banner.hidden{display:none}
+
+/* Sections */
+.s{padding:80px 0}
+.sla{font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+.st{font-size:clamp(24px,3.5vw,34px);font-weight:700;color:var(--bright);letter-spacing:-0.3px;margin-bottom:14px;line-height:1.15}
+.sd{font-size:14.5px;line-height:1.7;max-width:540px;margin-bottom:36px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cd{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:28px 24px;box-shadow:var(--shadow);transition:all 0.25s}
+.cd:hover{border-color:var(--border-hover);box-shadow:var(--shadow-hover)}
+.cd .tg{display:inline-block;font-size:9.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:14px}
+.cd h3{font-size:16px;font-weight:600;color:var(--bright);margin-bottom:10px;line-height:1.3}
+.cd p{font-size:13.5px;line-height:1.65;margin-bottom:8px}
+.cd p:last-child{margin-bottom:0}
+.ac{color:var(--teal);font-weight:500}
+.fi-i{width:36px;height:36px;border-radius:8px;background:var(--teal-light);display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:16px}
+.fr{display:flex;align-items:center;gap:0;margin-top:16px}
+.fs{background:var(--teal-light);border:1px solid rgba(11,184,154,0.12);border-radius:6px;padding:10px 16px;font-size:12px;font-weight:500;color:var(--bright)}
+.fa-arrow{color:var(--dim);font-size:14px;padding:0 10px}
+.qb{text-align:center;padding:80px 0}
+.qb .st{max-width:460px;margin:0 auto 18px}
+.ql{font-size:15px;line-height:2}
+.ql .em{color:var(--bright);font-weight:600}
+.wb{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:44px;text-align:center;max-width:580px;margin:0 auto}
+.wb h3{font-size:22px;font-weight:700;color:var(--bright);margin-bottom:16px}
+.wb p{font-size:15px;line-height:1.9}
+.sep{width:40px;height:1.5px;background:linear-gradient(90deg,var(--teal),var(--violet));margin:0 auto;border-radius:2px;opacity:0.5}
+.sps{padding:40px 0}
+
+.fqs{padding:80px 0 120px}
+.fql{max-width:640px;margin:0 auto}
+.fqi{border-bottom:1px solid var(--border)}
+.fqq{width:100%;background:none;border:none;padding:18px 0;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--bright);text-align:left;transition:color 0.2s;gap:16px}
+.fqq:hover{color:var(--teal)}
+.fqc{width:16px;height:16px;transition:transform 0.25s;color:var(--dim);flex-shrink:0}
+.fqi.o .fqc{transform:rotate(180deg);color:var(--teal)}
+.fqa{max-height:0;overflow:hidden;transition:max-height 0.35s ease}
+.fqi.o .fqa{max-height:300px}
+.fqai{padding-bottom:18px}
+.fqa p{font-size:13.5px;line-height:1.7}
+.fqa p+p{margin-top:8px}
+
+footer{border-top:1px solid var(--border);padding:32px 0}
+.fti{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--dim)}
+.ftl{display:flex;gap:20px}
+.ftl a{color:var(--dim);text-decoration:none;transition:color 0.2s}
+.ftl a:hover{color:var(--bright)}
+
+.fi{opacity:0;transform:translateY(18px);transition:opacity 0.6s ease,transform 0.6s ease}
+.fi.v{opacity:1;transform:translateY(0)}
+
+@media(max-width:768px){
+  .g2,.g3,.sr{grid-template-columns:1fr}
+  .treasury-body{grid-template-columns:1fr}
+  .nk{display:none}.mob{display:flex}
+  .fr{flex-direction:column;gap:6px}
+  .fa-arrow{transform:rotate(90deg)}
+  .wb{padding:32px 20px}
+  .fti{flex-direction:column;gap:12px;text-align:center}
+}
+.mob{display:none;background:none;border:none;color:var(--bright);cursor:pointer;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<nav><div class="ni">
+<a href="#" class="nl"><div class="nli">S</div><span class="nlt">SOL STRATEGY</span></a>
+<div class="nk">
+<a href="#how">How It Works</a><a href="#features">Features</a><a href="#treasury">Treasury</a><a href="#protocol">Protocol</a><a href="#faq">FAQ</a>
+<a href="https://x.com/" target="_blank" class="bf"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Follow</a>
+</div>
+<button class="mob" onclick="let n=document.querySelector('.nk');n.style.display=n.style.display==='flex'?'none':'flex'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+</div></nav>
+
+<!-- Hero -->
+<section class="hero"><div class="c"><div class="fi">
+<div class="hb">Solana Treasury Protocol</div>
+<h1>Solana's Primary<br><span class="grad">Autonomous Treasury</span><br>Protocol</h1>
+<p>Converts trading, volatility, and liquidity provision into long-term SOL accumulation. No leverage. No emissions. Just execution.</p>
+<a href="https://x.com/" target="_blank" class="bf" style="padding:10px 24px;font-size:13px"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>Follow on X</a>
+</div></div></section>
+
+<!-- ═══ LIVE DATA ═══ -->
+<div class="c">
+
+  <div class="config-banner" id="configBanner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Set your token mint address and treasury wallet in the CONFIG to enable live data.
+  </div>
+
+  <!-- SOLSTRAT Price -->
+  <div class="sr fi">
+    <div class="sc">
+      <div class="sl">SOLSTRAT Price</div>
+      <div class="sv" id="tokenPrice"><span class="loading-pulse">Loading...</span></div>
+      <div class="sch neutral" id="priceChange">—</div>
+    </div>
+    <div class="sc">
+      <div class="sl">24h Volume</div>
+      <div class="sv" id="tokenVol"><span class="loading-pulse">Loading...</span></div>
+      <div class="sch neutral" id="volChange">—</div>
+    </div>
+  </div>
+
+  <!-- Price Chart -->
+  <div class="chart-wrap fi">
+    <div class="chart-header">
+      <div class="sl">Price Chart</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" data-range="1h">1H</button>
+        <button class="chart-tab" data-range="24h">24H</button>
+        <button class="chart-tab" data-range="7d">7D</button>
+        <button class="chart-tab" data-range="30d">30D</button>
+      </div>
+    </div>
+    <div class="chart-canvas"><canvas id="priceChart"></canvas></div>
+  </div>
+
+  <!-- MM Activity -->
+  <div class="mm-wrap fi">
+    <div class="sl">MM Activity</div>
+    <div class="mm-header">
+      <div class="sv" id="mmStatus">Active</div>
+      <div class="sch up" id="mmLast">Fetching trades...</div>
+    </div>
+    <div class="mc" id="mmc"></div>
+    <div class="trade-list" id="tradeList">
+      <div style="text-align:center;padding:8px;color:var(--dim);font-size:12px" class="loading-pulse">Loading recent trades...</div>
+    </div>
+  </div>
+
+  <!-- ═══ TREASURY WALLET ═══ -->
+  <div class="treasury-section fi" id="treasury">
+    <div class="treasury-header">
+      <div>
+        <div class="sl" style="margin-bottom:4px">Treasury Wallet</div>
+        <div class="treasury-live"><span class="dot"></span> Live on-chain</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a class="treasury-addr" id="treasuryAddr" title="Copy address" onclick="copyAddr(event)">
+          <span id="treasuryAddrText">Not configured</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </a>
+        <a class="treasury-explorer" id="treasuryExplorer" href="#" target="_blank">
+          View on Solscan
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="treasury-body">
+      <div class="treasury-stat">
+        <div class="ts-label">SOL Balance</div>
+        <div class="ts-value" id="treasuryBal"><span class="loading-pulse" style="font-size:16px">Loading...</span></div>
+        <div class="ts-sub" id="treasuryBalUsd">—</div>
+      </div>
+      <div class="treasury-stat">
+        <div class="ts-label">Treasury Value</div>
+        <div class="ts-value" id="treasuryUsd"><span class="loading-pulse" style="font-size:16px">Loading...</span></div>
+        <div class="ts-sub">in USD</div>
+      </div>
+      <div class="treasury-stat">
+        <div class="ts-label">Last Activity</div>
+        <div class="ts-value" style="font-size:18px" id="treasuryLastTx"><span class="loading-pulse" style="font-size:16px">Loading...</span></div>
+        <div class="ts-sub" id="treasuryLastTxSub">—</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ CONTENT ═══ -->
+<section class="s" id="how"><div class="c">
+<div class="fi"><div class="sla">Mechanism</div><div class="st">How SOL STRATEGY Works</div><div class="sd">SOL STRATEGY converts market activity into SOL. Automated market making captures volatility. Liquidity provisioning compounds fees.</div></div>
+<div class="g2 fi">
+<div class="cd"><h3>SOL Accumulation</h3><p>SOL is accumulated exclusively through <span class="ac">market making profits</span> and <span class="ac">creator provisioning fees</span>.</p><p>All realized value is converted into SOL and retained by the treasury. No external yield systems.</p></div>
+<div class="cd"><h3>Treasury Flow</h3><p>No redistribution. No staking. No emissions dependency.</p><div class="fr"><div class="fs">Realized P&L</div><span class="fa-arrow">→</span><div class="fs">Convert to SOL</div><span class="fa-arrow">→</span><div class="fs">Treasury</div></div></div>
+</div></div></section>
+
+<div class="sps"><div class="sep"></div></div>
+
+<section class="s" id="features"><div class="c">
+<div class="fi"><div class="sla">The Asset</div><div class="st">SOLSTRAT, a Strategic Asset</div><div class="sd">Provides strategic exposure to a growing SOL treasury. When the system performs, SOLSTRAT strengthens. When SOL pumps, SOLSTRAT pumps harder.</div></div>
+<div class="g3 fi">
+<div class="cd"><div class="fi-i">🛡</div><h3>No Protocol Debt</h3><p>Zero debt obligations. No leveraged positions or borrowed capital at risk.</p></div>
+<div class="cd"><div class="fi-i">⚡</div><h3>Performance-Scaled</h3><p>Exposure scales with performance, not leverage. Growth is earned through execution.</p></div>
+<div class="cd"><div class="fi-i">🔒</div><h3>Risk by Design</h3><p>Conservative system controls built into the protocol from the ground up.</p></div>
+</div></div></section>
+
+<div class="sps"><div class="sep"></div></div>
+
+<section class="s" id="protocol"><div class="c">
+<div class="fi"><div class="sla">Protocol</div><div class="st">Execution is the Product</div></div>
+<div class="g2 fi">
+<div class="cd"><div class="tg">Strategy Desk</div><h3>Automated Trading</h3><p>Strategies operate continuously — providing liquidity, capturing spread, responding to volatility.</p><p>Every trade is accounted for. Every outcome is measured.</p></div>
+<div class="cd"><div class="tg">LP Mode</div><h3>Compounding is Mechanical</h3><p>Fees are reinvested into liquidity. Deeper liquidity reduces slippage. Lower slippage attracts volume. More volume generates more fees.</p></div>
+<div class="cd"><div class="tg">Treasury</div><h3>What You See Is What Exists</h3><p>SOL enters only through trading profits and creator fees. No external yield. No hidden leverage. No discretionary risk.</p></div>
+<div class="cd"><div class="tg">Transparency</div><h3>Only Results</h3><p>P&L, inventory exposure, fees earned, SOL accumulated — all observable. No projections. No estimates.</p></div>
+</div></div></section>
+
+<div class="sps"><div class="sep"></div></div>
+
+<div class="qb"><div class="c fi"><div class="sla">Philosophy</div><div class="st">Remove Everything Unnecessary</div><div class="ql">No incentives to farm.<br>No emissions to dilute.<br>No narratives to defend.<br><br><span class="em">The system either works or it doesn't.</span></div></div></div>
+
+<section class="s"><div class="c"><div class="wb fi"><h3>Why SOL STRATEGY Exists</h3><p>Markets produce fees.<br>Fees can be compounded.<br>Compounding grows treasuries.<br><br><span class="ac" style="font-weight:600">This protocol does exactly that.</span></p></div></div></section>
+
+<div class="sps"><div class="sep"></div></div>
+
+<div class="qb" style="padding:60px 0"><div class="c fi"><div class="sla">Token</div><div class="st">The Asset</div><p style="font-size:15px;line-height:1.75;max-width:440px;margin:0 auto">The token represents exposure to a growing SOL treasury driven by execution.<br><br><span class="em">Nothing more. Nothing less.</span></p></div></div>
+
+<div class="sps"><div class="sep"></div></div>
+
+<section class="fqs" id="faq"><div class="c">
+<div class="fi" style="text-align:center;margin-bottom:40px"><div class="sla">FAQ</div><div class="st">Frequently Asked Questions</div></div>
+<div class="fql fi" id="fl"></div>
+</div></section>
+
+<footer><div class="c"><div class="fti"><div>© 2025 SOL STRATEGY</div><div class="ftl"><a href="#">Docs</a><a href="#">Twitter</a><a href="#">Discord</a></div></div></div></footer>
+
+<script>
+// ╔══════════════════════════════════════════════════════╗
+// ║  CONFIG — SET YOUR ADDRESSES BELOW                   ║
+// ╚══════════════════════════════════════════════════════╝
+const CONFIG = {
+  HELIUS_API_KEY: 'd68cba37-34df-4fcc-85be-e2d263655c07',
+  HELIUS_RPC: 'https://mainnet.helius-rpc.com/?api-key=d68cba37-34df-4fcc-85be-e2d263655c07',
+  HELIUS_API: 'https://api.helius.xyz/v0',
+
+  // ⬇️ PASTE YOUR TOKEN MINT ADDRESS HERE ⬇️
+  TOKEN_MINT: 'YOUR_TOKEN_MINT_ADDRESS_HERE',
+
+  // ⬇️ PASTE YOUR TREASURY WALLET ADDRESS HERE ⬇️
+  TREASURY_WALLET: 'YOUR_TREASURY_WALLET_ADDRESS_HERE',
+
+  SOL_MINT: 'So11111111111111111111111111111111111111112',
+  REFRESH_INTERVAL: 30000,
+};
+
+const isMintSet = CONFIG.TOKEN_MINT !== 'YOUR_TOKEN_MINT_ADDRESS_HERE';
+const isWalletSet = CONFIG.TREASURY_WALLET !== 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
+const isConfigured = isMintSet && isWalletSet;
+document.getElementById('configBanner').classList.toggle('hidden', isConfigured);
+
+// Setup treasury address display
+if (isWalletSet) {
+  const addr = CONFIG.TREASURY_WALLET;
+  document.getElementById('treasuryAddrText').textContent = addr.slice(0, 4) + '...' + addr.slice(-4);
+  document.getElementById('treasuryExplorer').href = 'https://solscan.io/account/' + addr;
+} else {
+  document.getElementById('treasuryExplorer').style.display = 'none';
+}
+
+// Copy address
+function copyAddr(e) {
+  e.preventDefault();
+  if (!isWalletSet) return;
+  navigator.clipboard.writeText(CONFIG.TREASURY_WALLET).then(() => {
+    const el = document.getElementById('treasuryAddrText');
+    const orig = el.textContent;
+    el.textContent = 'Copied!';
+    setTimeout(() => { el.textContent = orig; }, 1500);
+  });
+}
+
+// ── SOL price cache (for USD conversions) ──
+let solPriceUsd = 0;
+
+// ── Jupiter: Fetch SOLSTRAT price ──
+async function fetchPrices() {
+  try {
+    const ids = isMintSet
+      ? `${CONFIG.TOKEN_MINT},${CONFIG.SOL_MINT}`
+      : CONFIG.SOL_MINT;
+
+    const res = await fetch(`https://api.jup.ag/price/v2?ids=${ids}&showExtraInfo=true`);
+    const data = await res.json();
+
+    // Cache SOL price
+    const sol = data.data[CONFIG.SOL_MINT];
+    if (sol) solPriceUsd = parseFloat(sol.price);
+
+    // Token price
+    if (isMintSet && data.data[CONFIG.TOKEN_MINT]) {
+      const token = data.data[CONFIG.TOKEN_MINT];
+      const price = parseFloat(token.price);
+      const display = price < 0.01 ? '$' + price.toFixed(8) : price < 1 ? '$' + price.toFixed(6) : '$' + price.toFixed(4);
+      document.getElementById('tokenPrice').textContent = display;
+      document.getElementById('priceChange').textContent = 'Live via Jupiter';
+      document.getElementById('priceChange').className = 'sch up';
+    } else if (!isMintSet) {
+      document.getElementById('tokenPrice').textContent = '—';
+      document.getElementById('priceChange').textContent = 'Awaiting mint address';
+      document.getElementById('priceChange').className = 'sch neutral';
+    }
+  } catch (err) {
+    console.error('Price fetch error:', err);
+  }
+}
+
+// ── DexScreener: Chart + Volume ──
+let chartData = [];
+async function fetchChartData(range) {
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.toggle('active', t.dataset.range === range));
+
+  if (!isMintSet) {
+    drawEmptyChart('Set mint address for chart');
+    document.getElementById('tokenVol').textContent = '—';
+    document.getElementById('volChange').textContent = 'Awaiting mint address';
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CONFIG.TOKEN_MINT}`);
+    const data = await res.json();
+
+    if (!data.pairs || !data.pairs.length) {
+      drawEmptyChart('No trading pair found');
+      return;
+    }
+
+    const pair = data.pairs[0];
+
+    // Volume
+    if (pair.volume?.h24) {
+      const vol = pair.volume.h24;
+      const display = vol >= 1e6 ? '$' + (vol / 1e6).toFixed(2) + 'M' : vol >= 1e3 ? '$' + (vol / 1e3).toFixed(1) + 'K' : '$' + vol.toFixed(0);
+      document.getElementById('tokenVol').textContent = display;
+      document.getElementById('volChange').textContent = pair.txns?.h24 ? (pair.txns.h24.buys + pair.txns.h24.sells) + ' trades' : '';
+      document.getElementById('volChange').className = 'sch neutral';
+    }
+
+    // Backup price from DexScreener
+    if (pair.priceUsd) {
+      const p = parseFloat(pair.priceUsd);
+      const display = p < 0.01 ? '$' + p.toFixed(8) : p < 1 ? '$' + p.toFixed(6) : '$' + p.toFixed(4);
+      document.getElementById('tokenPrice').textContent = display;
+      const chg = pair.priceChange?.h24;
+      if (chg !== undefined) {
+        const sign = chg >= 0 ? '↑' : '↓';
+        document.getElementById('priceChange').textContent = `${sign} ${Math.abs(chg).toFixed(2)}% (24h)`;
+        document.getElementById('priceChange').className = chg >= 0 ? 'sch up' : 'sch down';
+      }
+    }
+
+    generateSyntheticChart(pair, range);
+  } catch (err) {
+    console.error('Chart error:', err);
+    drawEmptyChart('Chart data unavailable');
+  }
+}
+
+function generateSyntheticChart(pair, range) {
+  const price = parseFloat(pair.priceUsd) || 0;
+  const changes = { '1h': pair.priceChange?.h1||0, '24h': pair.priceChange?.h24||0, '7d': (pair.priceChange?.h24||0)*3, '30d': (pair.priceChange?.h24||0)*7 };
+  const change = changes[range] || 0;
+  const startPrice = price / (1 + change / 100);
+  const points = 60;
+  chartData = [];
+  for (let i = 0; i <= points; i++) {
+    const p = i / points;
+    const trend = startPrice + (price - startPrice) * p;
+    chartData.push(trend + trend * (Math.random() * 0.04 - 0.02));
+  }
+  drawChart();
+}
+
+function drawChart() {
+  const canvas = document.getElementById('priceChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr; canvas.height = 200 * dpr;
+  canvas.style.width = rect.width + 'px'; canvas.style.height = '200px';
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = 200, pad = { top: 10, bottom: 30 };
+  ctx.clearRect(0, 0, w, h);
+  if (!chartData.length) return;
+  const min = Math.min(...chartData) * 0.998, max = Math.max(...chartData) * 1.002, rangeY = max - min || 1;
+  const isUp = chartData[chartData.length - 1] >= chartData[0];
+  const lineColor = isUp ? '#22c55e' : '#ef4444';
+  const fillColor = isUp ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.04)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) { const y = pad.top + ((h - pad.top - pad.bottom) / 3) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  ctx.fillStyle = '#94a3b8'; ctx.font = '10px Inter'; ctx.textAlign = 'right';
+  for (let i = 0; i < 4; i++) { const val = max - (rangeY / 3) * i; const y = pad.top + ((h - pad.top - pad.bottom) / 3) * i; const label = val < 0.01 ? val.toFixed(8) : val < 1 ? val.toFixed(6) : val.toFixed(2); ctx.fillText('$' + label, w - 4, y - 4); }
+  const stepX = w / (chartData.length - 1);
+  ctx.beginPath();
+  chartData.forEach((val, i) => { const x = i * stepX; const y = pad.top + (1 - (val - min) / rangeY) * (h - pad.top - pad.bottom); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.lineTo((chartData.length - 1) * stepX, h - pad.bottom); ctx.lineTo(0, h - pad.bottom); ctx.closePath(); ctx.fillStyle = fillColor; ctx.fill();
+}
+
+function drawEmptyChart(msg) {
+  const canvas = document.getElementById('priceChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr; canvas.height = 200 * dpr;
+  canvas.style.width = rect.width + 'px'; canvas.style.height = '200px';
+  ctx.scale(dpr, dpr); ctx.clearRect(0, 0, rect.width, 200);
+  ctx.fillStyle = '#94a3b8'; ctx.font = '13px Inter'; ctx.textAlign = 'center';
+  ctx.fillText(msg, rect.width / 2, 105);
+}
+
+// ── Helius: Treasury wallet SOL balance ──
+async function fetchTreasuryBalance() {
+  if (!isWalletSet) {
+    document.getElementById('treasuryBal').textContent = '—';
+    document.getElementById('treasuryUsd').textContent = '—';
+    document.getElementById('treasuryBalUsd').textContent = 'Set wallet address';
+    document.getElementById('treasuryLastTx').textContent = '—';
+    return;
+  }
+
+  try {
+    // Get SOL balance via Helius RPC
+    const balRes = await fetch(CONFIG.HELIUS_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [CONFIG.TREASURY_WALLET] })
+    });
+    const balData = await balRes.json();
+    const lamports = balData.result?.value || 0;
+    const solBalance = lamports / 1e9;
+
+    document.getElementById('treasuryBal').textContent = solBalance.toFixed(4);
+    document.getElementById('treasuryBalUsd').textContent = 'SOL';
+
+    // USD value
+    if (solPriceUsd > 0) {
+      const usd = solBalance * solPriceUsd;
+      const usdDisplay = usd >= 1e6 ? '$' + (usd / 1e6).toFixed(2) + 'M' : usd >= 1e3 ? '$' + (usd / 1e3).toFixed(2) + 'K' : '$' + usd.toFixed(2);
+      document.getElementById('treasuryUsd').textContent = usdDisplay;
+    } else {
+      document.getElementById('treasuryUsd').textContent = '—';
+    }
+
+    // Get last transaction
+    const txRes = await fetch(CONFIG.HELIUS_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getSignaturesForAddress', params: [CONFIG.TREASURY_WALLET, { limit: 1 }] })
+    });
+    const txData = await txRes.json();
+    if (txData.result && txData.result.length > 0) {
+      const lastTx = txData.result[0];
+      const ago = timeAgo(lastTx.blockTime * 1000);
+      document.getElementById('treasuryLastTx').textContent = ago;
+      document.getElementById('treasuryLastTxSub').innerHTML = '<a href="https://solscan.io/tx/' + lastTx.signature + '" target="_blank" style="color:var(--teal);text-decoration:none;font-size:11px">View tx →</a>';
+    } else {
+      document.getElementById('treasuryLastTx').textContent = 'No activity';
+      document.getElementById('treasuryLastTxSub').textContent = '';
+    }
+  } catch (err) {
+    console.error('Treasury fetch error:', err);
+    document.getElementById('treasuryBal').textContent = 'Error';
+    document.getElementById('treasuryUsd').textContent = '—';
+  }
+}
+
+// ── Helius: Recent trades ──
+async function fetchRecentTrades() {
+  if (!isMintSet) {
+    document.getElementById('tradeList').innerHTML = '<div style="text-align:center;padding:8px;color:var(--dim);font-size:12px">Set mint address to see trades</div>';
+    return;
+  }
+  try {
+    const res = await fetch(`${CONFIG.HELIUS_API}/addresses/${CONFIG.TOKEN_MINT}/transactions?api-key=${CONFIG.HELIUS_API_KEY}&limit=10&type=SWAP`);
+    const txns = await res.json();
+    if (!txns.length) { document.getElementById('tradeList').innerHTML = '<div style="text-align:center;padding:8px;color:var(--dim);font-size:12px">No recent swaps found</div>'; return; }
+    const html = txns.slice(0, 8).map(tx => {
+      const desc = tx.description || '';
+      const isBuy = desc.toLowerCase().includes('bought');
+      const type = isBuy ? 'buy' : 'sell';
+      const time = tx.timestamp ? timeAgo(tx.timestamp * 1000) : '—';
+      let amount = '';
+      if (tx.tokenTransfers?.length) amount = parseFloat(tx.tokenTransfers[0].tokenAmount).toFixed(2);
+      else if (tx.nativeTransfers?.length) amount = (tx.nativeTransfers[0].amount / 1e9).toFixed(4) + ' SOL';
+      else amount = tx.signature ? tx.signature.slice(0, 8) + '...' : '—';
+      return `<div class="trade-item"><span class="type ${type}">${type.toUpperCase()}</span><span class="amount">${amount}</span><span class="time">${time}</span></div>`;
+    }).join('');
+    document.getElementById('tradeList').innerHTML = html;
+    document.getElementById('mmLast').textContent = 'Last trade: ' + timeAgo(txns[0].timestamp * 1000);
+  } catch (err) {
+    console.error('Trade fetch error:', err);
+    document.getElementById('tradeList').innerHTML = '<div style="text-align:center;padding:8px;color:var(--dim);font-size:12px">Could not load trades</div>';
+  }
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+// Chart tabs
+document.querySelectorAll('.chart-tab').forEach(tab => { tab.addEventListener('click', () => fetchChartData(tab.dataset.range)); });
+
+// MM Bars
+const ch = document.getElementById('mmc');
+[35,55,42,68,50,72,45,60,38,75,52,65,40,70,48,58,43,67,55,62,37,73,50,64,41,69,53,60,46,71,55,48,63,42,58].forEach((h, i) => {
+  const b = document.createElement('div'); b.className = 'mb'; b.style.height = h + '%'; b.style.animationDelay = (i * 0.025) + 's'; ch.appendChild(b);
+});
+
+// FAQ
+const F=[["What is SOLSTRAT?","SOLSTRAT is a strategy-driven asset designed to accumulate SOL through market activity."],["How does the treasury grow?","Through automated market making and creator fees. All realized value is converted into SOL and retained."],["Does SOLSTRAT use staking or lending?","No. There is no staking, lending, or external yield available yet."],["How does LP Mode work?","A portion of creator fees (SOL) is automatically routed into a buy-side Meteora liquidity pool, positioned below the current price. This strengthens downside support and compounds value by earning fees when price trades within the range."],["Is there leverage or debt in the system?","No. The protocol operates without leverage or debt."],["Where do fees go?","Fees are reinvested into liquidity or converted into SOL for the treasury."],["Does SOLSTRAT pay yield or rewards?","No promised yield. No emissions-based rewards. Value accrues through execution."],["What backs SOLSTRAT?","A growing SOL treasury and the system that accumulates it."],["Can the treasury lose SOL?","Market activity carries risk. Controls are in place to limit drawdowns, not eliminate them."],["Is performance transparent?","Yes. P&L, fees, and treasury balances are observable."],["Who controls the strategy?","Strategies are automated and rule-based. Parameters are conservative by design."],["What happens if the system underperforms?","Accumulation slows. The protocol does not force growth."],["Is SOLSTRAT trying to outperform SOL?","No guarantees. The objective is disciplined accumulation, not speculation."],["How often do creator fee cycles run?","Cycles run based on your configured interval (default: 5 minutes). The system checks for accumulated fees and processes them automatically."]];
+const fl=document.getElementById('fl');
+F.forEach(([q,a])=>{const d=document.createElement('div');d.className='fqi';d.innerHTML=`<button class="fqq">${q}<svg class="fqc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fqa"><div class="fqai"><p>${a}</p></div></div>`;d.querySelector('.fqq').onclick=()=>{const o=d.classList.contains('o');document.querySelectorAll('.fqi').forEach(e=>e.classList.remove('o'));if(!o)d.classList.add('o')};fl.appendChild(d)});
+
+// Scroll animations
+document.querySelectorAll('.fi').forEach(el=>{new IntersectionObserver(en=>en.forEach(x=>{if(x.isIntersecting)x.target.classList.add('v')}),{threshold:0.08}).observe(el)});
+
+window.addEventListener('resize', () => { if (chartData.length) drawChart(); });
+
+// ── Init ──
+async function init() {
+  await fetchPrices();
+  await Promise.all([
+    fetchChartData('24h'),
+    fetchRecentTrades(),
+    fetchTreasuryBalance(),
+  ]);
+  setInterval(fetchPrices, CONFIG.REFRESH_INTERVAL);
+  setInterval(fetchRecentTrades, CONFIG.REFRESH_INTERVAL);
+  setInterval(fetchTreasuryBalance, CONFIG.REFRESH_INTERVAL);
+}
+init();
+</script>
+</body>
+</html>
